@@ -3,12 +3,34 @@ package ar_test
 import (
 	"bytes"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"pault.ag/go/debian/deb/ar"
 )
+
+func TestFileInfoHeader(t *testing.T) {
+	f, err := os.Open("../testdata/multi_archive.a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { f.Close() })
+
+	fi, err := f.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	hdr := ar.FileInfoHeader(fi)
+	assertEqual(t, "multi_archive.a", hdr.Name)
+	assertEqual(t, 1693419806, hdr.ModTime.Unix())
+	assertEqual(t, 0, hdr.Uid)
+	assertEqual(t, 0, hdr.Gid)
+	assertEqual(t, "-rw-r--r--", hdr.Mode.String())
+	assertEqual(t, 156, hdr.Size)
+
+}
 
 func TestWriter(t *testing.T) {
 	var buf bytes.Buffer

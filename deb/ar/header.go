@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -20,8 +21,8 @@ type Header struct {
 	Name    string
 	ModTime time.Time
 
-	Uid int
-	Gid int
+	Uid uint32
+	Gid uint32
 
 	Mode os.FileMode
 	Size int64
@@ -46,8 +47,8 @@ func unmarshalHeader(buf []byte) (h Header, err error) {
 	unixTime := parseInt("modification timestamp", buf[16:28], 10, 64)
 	h.ModTime = time.Unix(unixTime, 0)
 
-	h.Uid = int(parseInt("owner ID", buf[28:34], 10, 32))
-	h.Gid = int(parseInt("group ID", buf[34:40], 10, 32))
+	h.Uid = uint32(parseInt("owner ID", buf[28:34], 10, 64))
+	h.Gid = uint32(parseInt("group ID", buf[34:40], 10, 64))
 
 	h.Mode = fs.FileMode(parseInt("file mode", buf[40:48], 8, 64))
 
@@ -69,8 +70,8 @@ func (h Header) marshal() ([]byte, error) {
 
 	copy(buf[0:16], []byte(name))
 	copy(buf[16:28], []byte(strconv.FormatInt(h.ModTime.Unix(), 10)))
-	copy(buf[28:34], []byte(strconv.Itoa(h.Uid)))
-	copy(buf[34:40], []byte(strconv.Itoa(h.Gid)))
+	copy(buf[28:34], []byte(strconv.FormatUint(uint64(h.Uid), 10)))
+	copy(buf[34:40], []byte(strconv.FormatUint(uint64(h.Gid), 10)))
 	copy(buf[40:48], []byte(strconv.FormatUint(uint64(h.Mode), 8)))
 	copy(buf[48:58], []byte(strconv.FormatInt(h.Size, 10)))
 	buf = append(buf, []byte(headerEndChars)...)
@@ -86,11 +87,12 @@ type SectionReader interface {
 }
 
 func FileInfoHeader(fi fs.FileInfo) *Header {
+	sys, _ := fi.Sys().(syscall.Stat_t)
 	return &Header{
 		Name:          fi.Name(),
 		ModTime:       fi.ModTime(),
-		Uid:           0,
-		Gid:           0,
+		Uid:           sys.Uid,
+		Gid:           sys.Gid,
 		Mode:          fi.Mode(),
 		Size:          fi.Size(),
 		SectionReader: nil,

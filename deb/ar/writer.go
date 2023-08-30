@@ -14,12 +14,10 @@ func NewWriter(w io.Writer) *Writer {
 type Writer struct {
 	w      io.Writer
 	offset int64
-	// remainingRead int64
-	// current       io.Reader
-
-	// err      error
 }
 
+// WriteHeader will write the Header.
+// If Header.SectionReader is not nil, it will be Seeked to the start and written as file.
 func (aw *Writer) WriteHeader(hdr *Header) (int64, error) {
 	if aw.offset == 0 {
 		_, err := aw.w.Write([]byte(Signature))
@@ -45,6 +43,10 @@ func (aw *Writer) WriteHeader(hdr *Header) (int64, error) {
 	aw.offset += int64(n)
 
 	if hdr.SectionReader != nil {
+		_, err := hdr.SectionReader.Seek(0, io.SeekStart)
+		if err != nil {
+			return 0, err
+		}
 		n, err := io.Copy(aw.w, hdr.SectionReader)
 		aw.offset += n
 		return n, err
