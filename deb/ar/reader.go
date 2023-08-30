@@ -4,11 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // NewReader reads an ar archive.
@@ -34,8 +29,6 @@ type Reader struct {
 }
 
 var _ io.Reader = &Reader{}
-
-const Signature = "!<arch>\n"
 
 func (ar *Reader) Next() (*Header, error) {
 	if ar.err != nil {
@@ -99,16 +92,16 @@ func (ar *Reader) Next() (*Header, error) {
 
 	ar.offset += 60
 
-	h, err := newHeader(headerBuf)
+	h, err := unmarshalHeader(headerBuf)
 	if err != nil {
 		ar.err = fmt.Errorf("could not parse header: %w", err)
 		return nil, ar.err
 	}
-	ar.remainingRead = h.size
-	ar.current = io.LimitReader(ar.r, h.size)
+	ar.remainingRead = h.Size
+	ar.current = io.LimitReader(ar.r, h.Size)
 
 	if ar.readerAt != nil {
-		h.SectionReader = io.NewSectionReader(ar.readerAt, ar.offset, h.size)
+		h.SectionReader = io.NewSectionReader(ar.readerAt, ar.offset, h.Size)
 	}
 
 	return &h, nil
@@ -129,82 +122,6 @@ func (ar *Reader) Read(p []byte) (n int, err error) {
 	ar.offset += int64(n)
 	ar.remainingRead -= int64(n)
 	return n, err
-}
-
-type Header struct {
-	name    string
-	modTime time.Time
-
-	Uid int
-	Gid int
-
-	mode os.FileMode
-	size int64
-
-	// SectionReader will be non-nil if the underlying reader is an [io.ReaderAt]
-	SectionReader *io.SectionReader
-}
-
-var _ fs.FileInfo = Header{}
-
-// IsDir implements fs.FileInfo.
-func (h Header) IsDir() bool {
-	return h.mode.IsDir()
-}
-
-// ModTime implements fs.FileInfo.
-func (h Header) ModTime() time.Time {
-	return h.modTime
-}
-
-// Mode implements fs.FileInfo.
-func (h Header) Mode() fs.FileMode {
-	return h.mode
-}
-
-// Name implements fs.FileInfo.
-func (h Header) Name() string {
-	return h.name
-}
-
-// Size implements fs.FileInfo.
-func (h Header) Size() int64 {
-	return h.size
-}
-
-// Sys implements fs.FileInfo.
-func (h Header) Sys() any {
-	return h.SectionReader
-}
-
-const headerEndChars = "`\n"
-
-func newHeader(buf []byte) (h Header, err error) {
-	parseInt := func(name string, input []byte, base, bitSize int) int64 {
-		n, serr := strconv.ParseInt(strings.TrimRight(string(input), " "), base, bitSize)
-		if serr != nil {
-			err = errors.Join(err, fmt.Errorf("%s: %w", name, serr))
-		}
-		return n
-	}
-
-	h.name = strings.TrimSuffix(strings.TrimSpace(string(buf[0:16])), "/")
-
-	unixTime := parseInt("modification timestamp", buf[16:28], 10, 64)
-	h.modTime = time.Unix(unixTime, 0)
-
-	h.Uid = int(parseInt("owner ID", buf[28:34], 10, 32))
-	h.Gid = int(parseInt("group ID", buf[34:40], 10, 32))
-
-	h.mode = fs.FileMode(parseInt("file mode", buf[40:48], 8, 64))
-
-	h.size = parseInt("file size", buf[48:58], 10, 64)
-
-	if string(buf[58:]) != headerEndChars {
-		err = errors.Join(err, fmt.Errorf("expected end chars %q, got %q", headerEndChars, string(buf[58:])))
-	}
-
-	return h, err
 }
 
 // copied from stdlib: archive/tar

@@ -34,12 +34,12 @@ func TestReaderAt(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assertEqual(t, `hello.txt`, firstEntry.Name())
-	assertEqual(t, 1361157466, firstEntry.ModTime().Unix())
+	assertEqual(t, `hello.txt`, firstEntry.Name)
+	assertEqual(t, 1361157466, firstEntry.ModTime.Unix())
 	assertEqual(t, 501, firstEntry.Uid)
 	assertEqual(t, 20, firstEntry.Gid)
-	assertEqual(t, 13, firstEntry.Size())
-	assertEqual(t, 0o100644, firstEntry.Mode())
+	assertEqual(t, 13, firstEntry.Size)
+	assertEqual(t, 0o100644, firstEntry.Mode)
 
 	if firstEntry.SectionReader == nil {
 		t.Fatal("firstEntry.SectionReader should not be nil")
@@ -65,17 +65,17 @@ func TestReaderAt(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		assertEqual(t, `lamp.txt`, secondEntry.Name())
-		assertEqual(t, 1361248906, secondEntry.ModTime().Unix())
+		assertEqual(t, `lamp.txt`, secondEntry.Name)
+		assertEqual(t, 1361248906, secondEntry.ModTime.Unix())
 		assertEqual(t, 501, secondEntry.Uid)
 		assertEqual(t, 20, secondEntry.Gid)
-		assertEqual(t, 13, secondEntry.Size())
-		assertEqual(t, 0o100644, secondEntry.Mode())
+		assertEqual(t, 13, secondEntry.Size)
+		assertEqual(t, 0o100644, secondEntry.Mode)
 		secondContent, err := io.ReadAll(secondEntry.SectionReader)
 		if err != nil {
 			t.Fatal(err)
 		}
-		assertEqual(t, secondEntry.Size(), int64(len(secondContent)))
+		assertEqual(t, secondEntry.Size, int64(len(secondContent)))
 		assertEqual(t, "I love lamp.\n", string(secondContent))
 	}
 
@@ -122,12 +122,12 @@ func TestReader(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assertEqual(t, `debian-binary`, firstEntry.Name())
-	assertEqual(t, 1342943816, firstEntry.ModTime().Unix())
+	assertEqual(t, `debian-binary`, firstEntry.Name)
+	assertEqual(t, 1342943816, firstEntry.ModTime.Unix())
 	assertEqual(t, 0, firstEntry.Uid)
 	assertEqual(t, 0, firstEntry.Gid)
-	assertEqual(t, 4, firstEntry.Size())
-	assertEqual(t, 0o100644, firstEntry.Mode())
+	assertEqual(t, 4, firstEntry.Size)
+	assertEqual(t, 0o100644, firstEntry.Mode)
 
 	if firstEntry.SectionReader != nil {
 		t.Fatal("firstEntry.SectionReader should be nil")
