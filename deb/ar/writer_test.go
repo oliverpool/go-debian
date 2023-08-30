@@ -59,7 +59,7 @@ func TestWriter(t *testing.T) {
 		Uid:     0,
 		Gid:     1,
 		Mode:    0o100644,
-		Size:    4,
+		Size:    3,
 	})
 	assertEqual(t, 0, n)
 	if err != nil {
@@ -72,7 +72,7 @@ func TestWriter(t *testing.T) {
 	}
 	assertEqual(t, "!<arch>\n"+
 		"debian-binary   1342943816  0     1     100644  4         `\n2.0\n"+
-		"hello           1342943816  0     1     100644  4         `\n123",
+		"hello           1342943816  0     1     100644  3         `\n123",
 		buf.String())
 
 	// padding should be added
@@ -82,7 +82,7 @@ func TestWriter(t *testing.T) {
 		Uid:     0,
 		Gid:     1,
 		Mode:    0o100644,
-		Size:    4,
+		Size:    40,
 	})
 	assertEqual(t, 0, n)
 	if err != nil {
@@ -95,8 +95,8 @@ func TestWriter(t *testing.T) {
 	}
 	assertEqual(t, "!<arch>\n"+
 		"debian-binary   1342943816  0     1     100644  4         `\n2.0\n"+
-		"hello           1342943816  0     1     100644  4         `\n123\n"+
-		"hello           1342943816  0     1     100644  4         `\n123",
+		"hello           1342943816  0     1     100644  3         `\n123\n"+
+		"hello           1342943816  0     1     100644  40        `\n123",
 		buf.String())
 
 }
