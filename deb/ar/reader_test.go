@@ -45,6 +45,14 @@ func TestReaderAt(t *testing.T) {
 		t.Fatal("firstEntry.SectionReader should not be nil")
 	}
 
+	hello := make([]byte, 5)
+	n, err := ar.Read(hello)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertEqual(t, 5, n)
+	assertEqual(t, "hello", string(hello))
+
 	firstContent, err := io.ReadAll(firstEntry.SectionReader)
 	if err != nil {
 		t.Fatal(err)
@@ -125,14 +133,13 @@ func TestReader(t *testing.T) {
 		t.Fatal("firstEntry.SectionReader should be nil")
 	}
 
-	// TODO: 	ar.Read()
-
-	// firstContent, err := io.ReadAll(firstEntry.SectionReader)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// assertEqual(t, 13, int64(len(firstContent)))
-	// assertEqual(t, "Hello world!\n", string(firstContent))
+	two := make([]byte, 3)
+	n, err := ar.Read(two)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertEqual(t, 3, n)
+	assertEqual(t, "2.0", string(two))
 
 	lastEntry, err := ar.Next()
 	if err != io.EOF {

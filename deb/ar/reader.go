@@ -24,13 +24,16 @@ func NewReader(r io.Reader) *Reader {
 }
 
 type Reader struct {
-	r        io.Reader
-	offset   int64
-	fileSize int64
+	r             io.Reader
+	offset        int64
+	remainingRead int64
+	current       io.Reader
 
 	err      error
 	readerAt io.ReaderAt
 }
+
+var _ io.Reader = &Reader{}
 
 const Signature = "!<arch>\n"
 
@@ -53,7 +56,7 @@ func (ar *Reader) Next() (*Header, error) {
 		}
 	}
 
-	toDiscard := ar.fileSize
+	toDiscard := ar.remainingRead
 	if (ar.offset+toDiscard)%2 == 1 {
 		toDiscard += 1
 	}
@@ -101,13 +104,31 @@ func (ar *Reader) Next() (*Header, error) {
 		ar.err = fmt.Errorf("could not parse header: %w", err)
 		return nil, ar.err
 	}
-	ar.fileSize = h.size
+	ar.remainingRead = h.size
+	ar.current = io.LimitReader(ar.r, h.size)
 
 	if ar.readerAt != nil {
 		h.SectionReader = io.NewSectionReader(ar.readerAt, ar.offset, h.size)
 	}
 
 	return &h, nil
+}
+
+// Read the current entry
+func (ar *Reader) Read(p []byte) (n int, err error) {
+	if ar.err != nil {
+		return 0, ar.err
+	}
+	if ar.current == nil {
+		if ar.offset == 0 {
+			return 0, errors.New("you must first call Next")
+		}
+		return 0, errors.New("no more entries")
+	}
+	n, err = ar.current.Read(p)
+	ar.offset += int64(n)
+	ar.remainingRead -= int64(n)
+	return n, err
 }
 
 type Header struct {
