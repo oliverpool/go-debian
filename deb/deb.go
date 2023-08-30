@@ -23,13 +23,16 @@ package deb // import "pault.ag/go/debian/deb"
 import (
 	"archive/tar"
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
 	"pault.ag/go/debian/control"
+	"pault.ag/go/debian/deb/ar"
 	"pault.ag/go/debian/dependency"
 	"pault.ag/go/debian/version"
 )
@@ -101,16 +104,30 @@ func (deb *Deb) Close() error {
 // create a deb.Deb object, and populate the Control and Data members.
 // It is the caller's responsibility to call Close() when done.
 func Load(in io.ReaderAt, pathname string) (*Deb, error) {
-	ar, err := LoadAr(in)
-	if err != nil {
-		return nil, err
+	/*
+		ar, err := LoadAr(in)
+		if err != nil {
+			return nil, err
+		}
+		deb, err := loadDeb(ar)
+		if err != nil {
+			return nil, err
+		}
+		deb.Path = pathname
+		return deb, nil
+
+		/*/
+	r, ok := in.(io.Reader)
+	if !ok {
+		return nil, errors.New("io.ReaderAt does not support Read!")
 	}
-	deb, err := loadDeb(ar)
+	deb, err := loadDebFromAr(ar.NewReader(r))
 	if err != nil {
 		return nil, err
 	}
 	deb.Path = pathname
 	return deb, nil
+	//*/
 }
 
 // }}}
@@ -179,6 +196,43 @@ func loadDeb(archive *Ar) (*Deb, error) {
 			return nil, err
 		}
 		contents[member.Name] = member
+	}
+	member, ok := contents["debian-binary"]
+	if !ok {
+		return nil, fmt.Errorf("Archive contains no binary version member!")
+	}
+	reader := bufio.NewReader(member.Data)
+	version, err := reader.ReadString('\n')
+	if err != nil {
+		return nil, err
+	}
+	switch version {
+	case "2.0\n":
+		return loadDeb2(contents)
+	default:
+		return nil, fmt.Errorf("Unknown binary version: '%s'", version)
+	}
+}
+
+func loadDebFromAr(archive *ar.Reader) (*Deb, error) {
+	contents := make(map[string]*ArEntry)
+	for {
+		h, err := archive.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		contents[h.Name()] = &ArEntry{
+			Name:      h.Name(),
+			Timestamp: h.ModTime().Unix(),
+			OwnerID:   int64(h.Uid),
+			GroupID:   int64(h.Gid),
+			FileMode:  strconv.FormatUint(uint64(h.Mode()), 8),
+			Size:      h.Size(),
+			Data:      h.SectionReader,
+		}
 	}
 	member, ok := contents["debian-binary"]
 	if !ok {
